@@ -1,6 +1,8 @@
 # cncjs-pendant-raspi-gpio
 Simple Raspberry Pi GPIO Pendant control for CNCjs.
 
+![image-1](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-1.jpg)
+
 ## Installation
 #### NPM Install
 ```
@@ -36,3 +38,12 @@ node bin/cncjs-pendant-raspi-gpio  --port /dev/ttyUSB0
 
 #### Press & Hold
  - 3 Sec: sudo poweroff "Shutdown"
+
+### Wiring 
+![image-4](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-4.jpg)
+
+![image-3](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-3.jpg)
+
+![image-2](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-2.jpg)
+
+![raspberry_pi_circuit_note](http://www.jameco.com/Jameco/workshop/circuitnotes/raspberry_pi_circuit_note_fig2a.jpg)
