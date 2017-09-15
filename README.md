@@ -9,9 +9,9 @@ Simple Raspberry Pi GPIO Pendant control for CNCjs.
 npm install cncjs-pendant-raspi-gpio
 ```
 #### NPM Install (global) [Recommended]
-'''
+```
 sudo npm install -g cncjs-pendant-raspi-gpio@latest --unsafe-perm
-'''
+```
 
 #### Manual Install
 ```
