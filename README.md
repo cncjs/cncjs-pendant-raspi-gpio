@@ -68,14 +68,14 @@ pm2 list
  - 3 Sec: sudo poweroff "Shutdown"
 
 ## Wiring 
+
+See the [fivdi/onoff](https://www.npmjs.com/package/onoff) Raspberry Pi GPIO NodeJS repository for more infomation.
+![nodejs onoff diagram](https://raw.githubusercontent.com/fivdi/onoff/master/examples/light-switch.png)
+
+![raspberry_pi_circuit_note](http://www.jameco.com/Jameco/workshop/circuitnotes/raspberry_pi_circuit_note_fig2a.jpg)
+
 ![image-4](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-4.jpg)
 
 ![image-3](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-3.jpg)
 
 ![image-2](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-2.jpg)
-
-![nodejs onoff diagram](https://raw.githubusercontent.com/fivdi/onoff/master/examples/light-switch.png)
-
-See the [fivdi/onoff](https://www.npmjs.com/package/onoff) Raspberry Pi GPIO NodeJS repository for more infomation.
-
-![raspberry_pi_circuit_note](http://www.jameco.com/Jameco/workshop/circuitnotes/raspberry_pi_circuit_note_fig2a.jpg)
