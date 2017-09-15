@@ -158,6 +158,10 @@ var createServer = function(options) {
 						// Key has been held down for x seconds
 						console.log("button_hold_fuction: Key has been held down for x seconds")
 						blink(10, 50)
+
+						// Poweroff
+						function puts(error, stdout, stderr) { util.puts(stdout) }
+						exec("sudo poweroff", puts);
 					} else {
 					// Key has not been held down for x seconds
 						console.log("button_hold_fuction: exit, safe timout")
