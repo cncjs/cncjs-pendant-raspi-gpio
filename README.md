@@ -74,4 +74,8 @@ pm2 list
 
 ![image-2](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-2.jpg)
 
+![nodejs onoff diagram](https://raw.githubusercontent.com/fivdi/onoff/master/examples/light-switch.png)
+
+See the [fivdi/onoff](https://www.npmjs.com/package/onoff) Raspberry Pi GPIO NodeJS repository for more infomation.
+
 ![raspberry_pi_circuit_note](http://www.jameco.com/Jameco/workshop/circuitnotes/raspberry_pi_circuit_note_fig2a.jpg)
