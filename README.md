@@ -11,7 +11,7 @@ npm install cncjs-pendant-raspi-gpio
 #### Manual Install
 ```
 wget https://github.com/cncjs/cncjs-pendant-raspi-gpio/archive/master.zip
-unzip cncjs-pendant-raspi-gpio*.zip
+unzip master.zip
 cd cncjs-pendant-raspi-gpio*
 npm install cncjs-pendant-raspi-gpio
 ```
@@ -39,7 +39,7 @@ node bin/cncjs-pendant-raspi-gpio  --port /dev/ttyUSB0
 #### Press & Hold
  - 3 Sec: sudo poweroff "Shutdown"
 
-### Wiring 
+## Wiring 
 ![image-4](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-4.jpg)
 
 ![image-3](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-3.jpg)
