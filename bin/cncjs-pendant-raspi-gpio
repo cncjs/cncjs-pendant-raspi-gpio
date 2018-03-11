@@ -195,6 +195,9 @@ var createServer = function(options) {
 					
 					// Button Presses Switch
 					switch (button_presses) {
+					case 0:
+						console.log("Button Presses: " + button_presses + " | Eletrical Noise");
+						break;
 					case 1:
 						button_presses_fuction = setTimeout(function() {
 							// Blink LEDS
