@@ -12,7 +12,7 @@ npm install cncjs-pendant-raspi-gpio
 ```
 #### NPM Install (global) [Recommended]
 ```
-sudo npm install -g cncjs-pendant-raspi-gpio@latest --unsafe-perm
+sudo npm install -g cncjs-pendant-raspi-gpio@latest --unsafe-perm --build-from-source
 ```
 
 #### Manual Install
