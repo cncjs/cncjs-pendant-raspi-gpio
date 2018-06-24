@@ -17,9 +17,10 @@ sudo npm install -g cncjs-pendant-raspi-gpio@latest --unsafe-perm --build-from-s
 
 #### Manual Install
 ```
+# Clone Repository
+cd ~/
 #wget https://github.com/cncjs/cncjs-pendant-raspi-gpio/archive/master.zip
 #unzip master.zip
-
 git clone https://github.com/cncjs/cncjs-pendant-raspi-gpio.git
 cd cncjs-pendant-raspi-gpio*
 npm install
