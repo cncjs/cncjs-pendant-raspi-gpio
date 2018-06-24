@@ -20,7 +20,9 @@
   "keywords": [
     "cncjs",
     "pendant",
-    "keyboard"
+    "raspberry",
+    "pi",
+    "pinout"
   ],
   "author": "Austin St. Aubin <AustinSaintAubin@gmail.com>",
   "license": "MIT",
@@ -33,7 +35,7 @@
     "inquirer": "^3.0.1",
     "jsonwebtoken": "^7.2.1",
     "lodash.get": "^4.4.2",
-    "serialport": "^4.0.7",
+    "serialport": "~6.1.1",
     "socket.io-client": "^1.7.2",
     "vorpal": "^1.11.4",
     "sleep": "^5.1.1",
