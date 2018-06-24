@@ -66,8 +66,8 @@ pm2 list
  3. G-Code: M7
  4. G-Code: $X "Unlock"
  5. G-Code: $X "Unlock"
- 6. blank
- 7. blank
+ 6. G-Code: $SLP "Sleep"
+ 7. G-Code: $SLP "Sleep"
  8. G-Code: $H "Home"
 
 #### Press & Hold
