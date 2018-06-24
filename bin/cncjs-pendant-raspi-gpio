@@ -243,8 +243,11 @@ var createServer = function(options) {
 					case 7:
 						button_presses_fuction = setTimeout(function() {
 							// Blink LEDS
-							blink(1, 1500)
+							blink(button_presses, 200)
 							console.log("Button Presses: " + button_presses)
+	
+							// CNC Command
+							socket.emit('write', options.port, "$SLP;\n");
 						}, 1000);
 						break;
 					default:
