@@ -128,7 +128,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 20px;
+  min-height: 28px;
   margin-top: 2px;
 }
 
@@ -159,6 +159,16 @@ textarea {
   color: #666;
   line-height: 1;
   cursor: pointer;
+}
+
+/* The settings gear: drawn, not a font glyph, so it is the same size everywhere. */
+.gear-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
 }
 
 .icon-button:hover:not(:disabled) {
