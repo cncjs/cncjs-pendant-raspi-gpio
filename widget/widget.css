@@ -128,7 +128,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
+  min-height: 24px;
   margin-top: 2px;
 }
 
@@ -161,13 +161,13 @@ textarea {
   cursor: pointer;
 }
 
-/* The settings gear: drawn, not a font glyph, so it is the same size everywhere. */
+/* The settings gear: drawn, not a font glyph, and sized like the 14px cogs in the CNCjs widget headers. */
 .gear-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
 }
 
