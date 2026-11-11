@@ -1,0 +1,19 @@
+[Unit]
+Description=CNCjs Raspberry Pi GPIO pendant (indicators, buttons and actions)
+Documentation=https://github.com/cncjs/cncjs-pendant-raspi-gpio
+After=network.target cncjs.service
+Wants=cncjs.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi
+# Adjust the paths, and --socket-port to the port CNCjs listens on.
+ExecStart=/usr/local/bin/node /home/pi/.cncjs/pendant-raspi-gpio/bin/cncjs-pendant-raspi-gpio --config /home/pi/.cncjs/cncrc.cfg --socket-port 8000
+# Always: while this is down, requests to the CNCjs mount hang.
+Restart=always
+RestartSec=5s
+SyslogIdentifier=cncjs-pendant-raspi-gpio
+
+[Install]
+WantedBy=multi-user.target

@@ -1,87 +1,215 @@
 # cncjs-pendant-raspi-gpio
-Simple Raspberry Pi GPIO Pendant control for CNCjs.
 
-[![NPM](https://nodei.co/npm/cncjs-pendant-raspi-gpio.png?compact=true)](https://nodei.co/npm/cncjs-pendant-raspi-gpio/)
+Raspberry Pi GPIO pins as indicators and buttons in [CNCjs](https://github.com/cncjs/cncjs), with actions that run when a pin changes. Everything is set up from a widget inside CNCjs.
 
-![image-1](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-1.jpg)
+<img src="docs/widget.png" alt="The widget: indicator tiles and output buttons" width="300">
 
-## Installation
-#### NPM Install (local)
+Typical uses:
+
+- A "dust bin full" sensor that turns a tile red, pauses the job and sends a push notification.
+- A door or enclosure switch shown as an indicator.
+- A button in CNCjs that switches a relay on a GPIO pin.
+
+**Version 1.0 is a complete rewrite.** The old single hard-coded button is gone; see [Upgrading from 0.x](#upgrading-from-0x).
+
+## What it does
+
+**Input pins** are shown as indicator tiles. Each state has its own message and color. When a pin changes, any number of actions can run:
+
+| Action | What happens |
+| :-- | :-- |
+| Browser alert | The tile flashes and the browser tab is flagged in every open CNCjs page. A desktop pop-up is shown where the browser allows it. |
+| System command | A shell command runs on the Pi, like a CNCjs event. Use it for `curl` push notifications. |
+| CNCjs command | Pause, resume or stop the job, feed hold, cycle start, unlock, homing or reset. |
+| G-code | Any G-code is sent to the machine. |
+
+Each action can be switched off on its own, and a pin's actions can be switched off together so the pin is only watched.
+
+**Output pins** are shown as buttons: toggle (click on, click off) or momentary (on for a set time).
+
+Pins keep being watched and actions keep running when no browser is open.
+
+## How it works
+
+There are two parts, because a web page cannot read the Pi's pins:
+
 ```
-npm install cncjs-pendant-raspi-gpio
-```
-#### NPM Install (global) [Recommended]
-```
-sudo npm install -g cncjs-pendant-raspi-gpio@latest --unsafe-perm --build-from-source
+sensor -- GPIO pin --> cncjs-pendant-raspi-gpio (service on the Pi)
+                         |-- runs system commands
+                         |-- sends commands and G-code through CNCjs
+                         |-- keeps its settings in the CNCjs config file
+                         '-- serves the widget  <-- CNCjs mount /gpio/ <-- Custom widget
 ```
 
-#### Manual Install
+The service never opens the serial port. Machine commands go through whichever port CNCjs already has open.
+
+## Requirements
+
+- A Raspberry Pi with the 40-pin header.
+- Raspberry Pi OS 13 "Trixie" or later. The service uses the libgpiod **v2** command-line tools (`gpiomon`, `gpioget`, `gpioset`). If they are missing: `sudo apt install gpiod`.
+- Node.js 18.3 or later.
+- CNCjs running on the same Pi. Tested with CNCjs 1.11.5; older versions need the Custom widget and URL mount points.
+- The user that runs the service must be in the `gpio` group (the default `pi` user is).
+
+Nothing is compiled during install, and there is one dependency.
+
+## Install
+
+```bash
+git clone https://github.com/cncjs/cncjs-pendant-raspi-gpio.git ~/.cncjs/pendant-raspi-gpio
+cd ~/.cncjs/pendant-raspi-gpio
+npm install --omit=dev
 ```
-# Clone Repository
-cd ~/
-#wget https://github.com/cncjs/cncjs-pendant-raspi-gpio/archive/master.zip
-#unzip master.zip
-git clone https://github.com/cncjs/cncjs-pendant-raspi-gpio.git
-cd cncjs-pendant-raspi-gpio*
+
+### 1. Start the service
+
+```bash
+bin/cncjs-pendant-raspi-gpio --config ~/.cncjs/cncrc.cfg --socket-port 8000
+```
+
+`--config` must be the config file CNCjs itself uses (the default is `~/.cncrc`), and `--socket-port` the port CNCjs listens on.
+
+| Option | Default | Meaning |
+| :-- | :-- | :-- |
+| `-s, --secret <secret>` | from the config file, or `CNCJS_SECRET` | CNCjs secret key |
+| `-c, --config <filename>` | `~/.cncrc` | CNCjs config file |
+| `--socket-address <address>` | `localhost` | where CNCjs runs |
+| `--socket-port <port>` | `8000` | port CNCjs listens on |
+| `--access-token-lifetime <time>` | `30d` | seconds, or e.g. `30m`, `12h`, `30d` |
+| `--listen-address <address>` | `127.0.0.1` | address the widget server listens on |
+| `--listen-port <port>` | `8010` | port the widget server listens on |
+| `--mock` | off | run without GPIO hardware |
+
+To start it at boot, edit the paths and port in [systemd/cncjs-pendant-raspi-gpio.service](systemd/cncjs-pendant-raspi-gpio.service), then:
+
+```bash
+sudo cp systemd/cncjs-pendant-raspi-gpio.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now cncjs-pendant-raspi-gpio
+journalctl -u cncjs-pendant-raspi-gpio -f    # log
+```
+
+### 2. Mount the widget in CNCjs
+
+Add a mount point that forwards `/gpio` to the service, either on the CNCjs command line:
+
+```bash
+cncjs --mount /gpio:http://127.0.0.1:8010/
+```
+
+or in the CNCjs config file:
+
+```json
+"mountPoints": [
+  { "route": "/gpio", "target": "http://127.0.0.1:8010/" }
+]
+```
+
+Restart CNCjs afterwards.
+
+### 3. Add the widget
+
+In CNCjs, open **Manage Widgets**, turn on **Custom**, click the widget's gear icon and set the URL to `/gpio/` (and any title you like).
+
+## Setting up pins
+
+Click the small gear at the bottom of the widget.
+
+<img src="docs/settings.png" alt="Pin settings with the header diagram" width="300">
+
+### GPIO number versus header pin
+
+A pin has two numbers. **GPIO17** is the number software uses. **Header pin 11** is where that signal sits on the 40-pin header. The dropdown shows both, and the diagram highlights the pin you chose. Pins that other software is using are greyed out.
+
+A few pins have a second job:
+
+- GPIO2 and GPIO3 have fixed pull-up resistors (I2C). GPIO3 is also the usual power-button pin.
+- GPIO14 and GPIO15 are the serial port. Leave them alone if a GRBL hat or the serial console uses them.
+
+### Inputs
+
+| Setting | Meaning |
+| :-- | :-- |
+| Pull resistor | Pull-down: the pin reads LOW when nothing drives it. Pull-up: it reads HIGH. None: you supply your own resistor. |
+| Must hold for (ms) | A new level only counts after it has lasted this long. Use a few seconds for a bin sensor so passing dust does not trigger it. |
+| Active when the pin is LOW | Flips which level counts as "active". |
+| Shown when active / inactive | Message and color of the tile in each state. |
+
+Actions run when the state changes, not when the service starts.
+
+### System commands
+
+Commands run through `sh` as the user the service runs as. These environment variables are set:
+
+| Variable | Example |
+| :-- | :-- |
+| `GPIO_NAME` | `Dust bin` |
+| `GPIO_PIN` | `17` |
+| `GPIO_STATE` | `active` or `inactive` |
+| `GPIO_LABEL` | the tile message for the new state, e.g. `FULL` |
+
+A [Pushover](https://pushover.net) notification:
+
+```bash
+curl -s --fail-with-body \
+  --form-string "token=YOUR_APP_TOKEN" \
+  --form-string "user=YOUR_USER_KEY" \
+  --form-string "message=$GPIO_NAME: $GPIO_LABEL" \
+  https://api.pushover.net/1/messages.json
+```
+
+`--fail-with-body` makes a rejected request count as a failure. The **Test** button runs an action straight from the form, before saving, and shows its output.
+
+### Outputs
+
+A toggle button stays on until clicked again. A momentary button turns the pin on for the set time. Timing is approximate (tens of milliseconds); this is not for step pulses or PWM. Outputs are released, and float, whenever the service stops.
+
+### Browser alerts
+
+Browsers only allow desktop pop-ups on HTTPS pages or on `localhost`. On a plain `http://` address the alert flashes the tile and flags the tab title instead. For anything you must not miss, add a push notification as a system command.
+
+## Where settings are stored
+
+In the CNCjs config file, under `state.gpio`, next to CNCjs's own events, commands and macros. They are saved through CNCjs, so backing up that one file covers them. They are not part of the browser's workspace export.
+
+## Wiring
+
+GPIO pins work at **3.3 V**. Higher voltages damage the Pi. Most industrial proximity sensors run on 6 to 36 V and switch near their supply voltage, so put an optocoupler, level shifter or voltage divider in between, or use an NPN open-collector sensor with the pin's pull-up. A pin can only supply a few milliamps; drive relays through a relay module or transistor.
+
+## Security
+
+An action can run any shell command, the same as CNCjs's own Commands and Events. Anyone who can sign in to CNCjs can therefore run commands on the Pi as the service user. The widget server listens on `127.0.0.1` only and every request must carry a valid CNCjs access token.
+
+## Troubleshooting
+
+| Symptom | Cause |
+| :-- | :-- |
+| The widget says it lost contact and keeps retrying | The service is not running. Check `systemctl status cncjs-pendant-raspi-gpio`. While it is down, CNCjs logs `ECONNREFUSED 127.0.0.1:8010` for each attempt. |
+| "Not signed in to CNCjs" | The access token expired, or `--config` points at a different file than the one CNCjs uses. Reload the CNCjs page. |
+| A tile says "unavailable" | Hover for the reason. Usually other software holds the pin (`gpioinfo` shows which). |
+| "libgpiod v2 tools are required" | The OS is older than Raspberry Pi OS 13. |
+| "CNCjs has no machine connected" | A CNCjs command or G-code action ran while no serial port was open in CNCjs. |
+| Settings will not save | The service saves through CNCjs; check `--socket-address` and `--socket-port`. |
+
+## Upgrading from 0.x
+
+Version 0.x was a single hard-coded button: presses on GPIO4 sent M7/M8/M9, `$X` or `$H`, and a three-second hold shut the Pi down. All of that is removed.
+
+- There is no `--port`, `--baudrate` or `--controller-type` any more. The service does not open the serial port, which fixes the conflict with GRBL hats on `/dev/ttyAMA0`.
+- `onoff`, `serialport` and the other old dependencies are gone, which fixes installs on current Node.js and Raspberry Pi OS.
+- For a shutdown button, use the Pi's own `gpio-shutdown` overlay.
+- If you ran 0.x under PM2, remove it: `pm2 delete cncjs-pendant-raspi-gpio`.
+
+## Development
+
+```bash
 npm install
+npm test                                           # no hardware needed
+bin/cncjs-pendant-raspi-gpio --mock --secret dev   # widget server with pretend pins
 ```
 
-## Usage
-Run `bin/cncjs-pendant-raspi-gpio` to start. Pass --help to `cncjs-pendant-raspi-gpio` for more options.
+In mock mode, set an input level with `POST /api/mock/<gpio>` and the body `{"level": 1}`. Saving settings still needs a running CNCjs, because that is where they are stored.
 
-Eamples:
+## License
 
-```
-bin/cncjs-pendant-keyboard --help
-node bin/cncjs-pendant-raspi-gpio  --port /dev/ttyUSB0
-```
-
-#### Auto Start
-
-###### Install [Production Process Manager [PM2]](http://pm2.io)
-```
-# Install PM2
-sudo npm install -g pm2
-
-# Setup PM2 Startup Script
-# sudo pm2 startup  # To Start PM2 as root
-pm2 startup  # To start PM2 as pi / current user
-  #[PM2] You have to run this command as root. Execute the following command:
-  sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u pi --hp /home/pi
-
-# Start CNCjs (on port 8000, /w Tinyweb mount point) with PM2
-## pm2 start ~/.cncjs/cncjs-pendant-raspi-gpio/bin/cncjs-pendant-raspi-gpio -- --port /dev/ttyUSB0
-pm2 start $(which cncjs-pendant-raspi-gpio) -- --port /dev/ttyUSB0
-
-# Set current running apps to startup
-pm2 save
-
-# Get list of PM2 processes
-pm2 list
-```
-
-#### Button Presses
- 1. G-Code: M9
- 2. G-Code: M8
- 3. G-Code: M7
- 4. G-Code: $X "Unlock"
- 5. G-Code: $X "Unlock"
- 6. G-Code: $SLP "Sleep"
- 7. G-Code: $SLP "Sleep"
- 8. G-Code: $H "Home"
-
-#### Press & Hold
- - 3 Sec: sudo poweroff "Shutdown"
-
-## Wiring 
-
-See the [fivdi/onoff](https://www.npmjs.com/package/onoff) Raspberry Pi GPIO NodeJS repository for more infomation.
-![nodejs onoff diagram](https://raw.githubusercontent.com/fivdi/onoff/master/examples/light-switch.png)
-
-![raspberry_pi_circuit_note](http://www.jameco.com/Jameco/workshop/circuitnotes/raspberry_pi_circuit_note_fig2a.jpg)
-
-![image-4](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-4.jpg)
-
-![image-3](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-3.jpg)
-
-![image-2](https://github.com/cncjs/cncjs-pendant-raspi-gpio/raw/master/docs/image-2.jpg)
+MIT
