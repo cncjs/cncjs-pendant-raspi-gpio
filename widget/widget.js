@@ -37,6 +37,7 @@
   let draft = null; // settings being edited; null while the form is closed
   let openPin = null; // id of the pin expanded in the form
   let formError = '';
+  const HOLD_MS = 1500; // press and hold this long to open settings when the status row is hidden
   const alerts = new Map(); // pin id -> { label, active, test }
 
   const $ = (id) => document.getElementById(id);
@@ -147,11 +148,11 @@
     stream = new EventSource(`api/events?token=${encodeURIComponent(token)}`);
     alive(10000);
     stream.addEventListener('status', (event) => {
-      alive(60000);
+      alive(35000);
       retryDelay = 5000;
       onStatus(JSON.parse(event.data));
     });
-    stream.addEventListener('ping', () => alive(60000));
+    stream.addEventListener('ping', () => alive(35000)); // the service pings every 10 s
     stream.addEventListener('notify', (event) => notify(JSON.parse(event.data)));
     stream.onerror = offline;
   }
@@ -308,7 +309,8 @@
         isOutput ? 'is-button' : 'is-indicator', alerts.has(pin.id) ? 'is-alert' : ''
       ].join(' ').trim(),
       type: isOutput ? 'button' : null,
-      title: `${pin.name} - ${where}${detail ? `\n${detail}` : ''}${muted ? '\nActions are turned off' : ''}`,
+      title: `${pin.name} - ${where}${detail ? `\n${detail}` : ''}${muted ? '\nActions are turned off' : ''}` +
+        `${barHidden() ? '\nPress and hold to open settings' : ''}`,
       disabled: isOutput && (Boolean(state.error) || !known),
       onclick: isOutput ? () => press(pin) : null
     },
@@ -327,7 +329,17 @@
     }
   }
 
+  // The status row (dot and cog) can be hidden to save space. It comes back
+  // whenever there is something to say or no other way to reach the settings.
+  function barHidden() {
+    return Boolean(embedded && status && status.config.hideBar && online && !fatal && !flashText &&
+      !draft && !status.gpioError && status.config.pins.some((pin) => pin.enabled));
+  }
+
   function renderBar() {
+    const hidden = barHidden();
+    $('bar').classList.toggle('is-tucked', hidden);
+    document.body.classList.toggle('is-tucked', hidden);
     let text = flashText || fatal;
     if (!text && !online) {
       text = status ? 'Lost contact with the GPIO service, retrying' : 'Connecting to the GPIO service';
@@ -359,7 +371,10 @@
   }
 
   function openSettings() {
-    draft = { pins: JSON.parse(JSON.stringify(status.config.pins)).map(withDefaults) };
+    draft = {
+      hideBar: Boolean(status.config.hideBar),
+      pins: JSON.parse(JSON.stringify(status.config.pins)).map(withDefaults)
+    };
     openPin = draft.pins.length === 1 ? draft.pins[0].id : null;
     formError = '';
     renderSettings();
@@ -421,7 +436,7 @@
 
   async function save() {
     try {
-      const next = await api('PUT', 'api/config', { pins: draft.pins });
+      const next = await api('PUT', 'api/config', { hideBar: draft.hideBar, pins: draft.pins });
       draft = null;
       formError = '';
       onStatus(next);
@@ -499,6 +514,7 @@
 
   function renderSettings() {
     const box = $('settings');
+    render(); // the status row shows while the form is open
     box.replaceChildren();
     box.hidden = !draft;
     document.body.classList.toggle('is-editing', Boolean(draft));
@@ -509,6 +525,8 @@
       h('div', { class: 'settings-head' }, h('strong', null, 'Pin settings')),
       draft.pins.map(pinCard),
       h('button', { type: 'button', class: 'button', onclick: addPin }, '+ Add pin'),
+      checkbox(draft, 'hideBar',
+        `Hide the status row. Press and hold the widget for ${HOLD_MS / 1000} seconds to open settings.`),
       popupRow(),
       formError ? h('div', { class: 'note is-error' }, formError) : null,
       h('div', { class: 'row settings-foot' },
@@ -720,6 +738,58 @@
     }, 'Allow desktop pop-ups for browser alerts');
   }
 
+  // ---- press and hold (only while the status row is hidden) ---------------
+
+  function watchHold() {
+    const box = $('tiles');
+    let timer = null;
+    let origin = null;
+    let swallowClick = false;
+
+    const cancel = () => {
+      clearTimeout(timer);
+      timer = null;
+      box.classList.remove('is-holding');
+    };
+
+    box.addEventListener('pointerdown', (event) => {
+      cancel();
+      if (!barHidden() || event.button !== 0) {
+        return;
+      }
+      origin = { x: event.clientX, y: event.clientY };
+      box.classList.add('is-holding');
+      timer = setTimeout(() => {
+        cancel();
+        swallowClick = true; // releasing must not also press the button underneath
+        openSettings();
+      }, HOLD_MS);
+    });
+    box.addEventListener('pointermove', (event) => {
+      if (timer && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 10) {
+        cancel(); // a drag or scroll, not a hold
+      }
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((name) => box.addEventListener(name, () => {
+      cancel();
+      if (swallowClick) {
+        setTimeout(() => { swallowClick = false; }, 50);
+      }
+    }));
+    box.addEventListener('contextmenu', (event) => {
+      if (timer || swallowClick) {
+        event.preventDefault(); // touch screens open a menu on long press
+      }
+    });
+    box.addEventListener('click', (event) => {
+      if (swallowClick) {
+        swallowClick = false;
+        event.stopPropagation();
+        event.preventDefault();
+      }
+    }, true);
+  }
+
   // ---- start -------------------------------------------------------------
 
   $('gear').addEventListener('click', () => (draft ? closeSettings() : openSettings()));
@@ -738,6 +808,7 @@
   });
 
   watchSize();
+  watchHold();
   render();
   if (token) {
     start();

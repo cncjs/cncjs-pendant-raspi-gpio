@@ -27,6 +27,10 @@ textarea {
 /* ---- tiles ---- */
 
 .tiles {
+  position: relative;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: 4px;
@@ -122,7 +126,52 @@ textarea {
   }
 }
 
+/* Fills across while the widget is pressed and held to open settings. */
+.tiles.is-holding::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 3px;
+  border-radius: 2px;
+  background: #337ab7;
+  transform-origin: left;
+  animation: hold 1.5s linear forwards;
+}
+
+@keyframes hold {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 /* ---- status bar ---- */
+
+/* Hidden by the "hide the status row" setting: out of sight, but the cog can
+   still be reached with the Tab key and shows up when it has focus. */
+.bar.is-tucked {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.bar.is-tucked:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  min-height: 24px;
+  margin-top: 2px;
+  overflow: visible;
+  clip-path: none;
+}
+
+body.is-tucked {
+  padding-bottom: 8px;
+}
 
 .bar {
   display: flex;
@@ -316,8 +365,18 @@ textarea:focus {
 }
 
 .card-body > .check,
-.card-body > .check span {
+.card-body > .check span,
+.settings > .check,
+.settings > .check span {
   white-space: normal;
+}
+
+.settings > .check {
+  align-items: flex-start;
+}
+
+.settings > .check input {
+  margin-top: 3px;
 }
 
 .hint {

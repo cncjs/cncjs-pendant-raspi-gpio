@@ -92,6 +92,12 @@ test('saving settings validates, stores through CNCjs and starts the pins', asyn
   assert.equal(ok.data.pins[0].active, false);
   assert.equal(backend.watching.has(17), true);
 
+  assert.equal(ok.data.config.hideBar, false);
+  const hidden = await json('PUT', '/api/config', { hideBar: true, pins: ok.data.config.pins });
+  assert.equal(hidden.data.config.hideBar, true);
+  assert.equal(saved[1].hideBar, true);
+  assert.equal((await json('GET', '/api/status')).data.config.hideBar, true);
+
   const lines = await json('GET', '/api/lines');
   assert.equal(lines.data.lines.find((l) => l.gpio === 17).own, true);
   assert.equal(lines.data.lines.find((l) => l.gpio === 4).used, true);

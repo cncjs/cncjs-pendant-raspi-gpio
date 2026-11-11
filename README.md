@@ -164,6 +164,12 @@ curl -s --fail-with-body \
 
 A toggle button stays on until clicked again. A momentary button turns the pin on for the set time. Timing is approximate (tens of milliseconds); this is not for step pulses or PWM. Outputs are released, and float, whenever the service stops.
 
+### Hiding the status row
+
+To save space, tick **Hide the status row** at the bottom of the settings. The dot and cog disappear and the widget is just the tiles. Press and hold the widget for 1.5 seconds to open the settings again; a line fills across under the tiles while you hold. Holding an output button opens the settings without switching the output.
+
+The row comes back by itself when contact with the service is lost, when there is an error to show, when no pins are enabled, and when the page is opened directly at `/gpio/`.
+
 ### Browser alerts
 
 Browsers only allow desktop pop-ups on HTTPS pages or on `localhost`. On a plain `http://` address the alert flashes the tile and flags the tab title instead. For anything you must not miss, add a push notification as a system command.
@@ -174,7 +180,29 @@ In the CNCjs config file, under `state.gpio`, next to CNCjs's own events, comman
 
 ## Wiring
 
-GPIO pins work at **3.3 V**. Higher voltages damage the Pi. Most industrial proximity sensors run on 6 to 36 V and switch near their supply voltage, so put an optocoupler, level shifter or voltage divider in between, or use an NPN open-collector sensor with the pin's pull-up. A pin can only supply a few milliamps; drive relays through a relay module or transistor.
+GPIO pins work at **3.3 V**. Higher voltages damage the Pi. Most industrial proximity sensors run on 6 to 36 V and switch near their supply voltage, so put an optocoupler module (see the example below), level shifter or voltage divider in between. A pin can only supply a few milliamps; drive relays through a relay module or transistor.
+
+### Example: a 24 V proximity sensor through an optocoupler module
+
+A 10 to 30 V proximity sensor cannot go straight to a GPIO pin. An optocoupler level-converter module (24 V in, 3.3 V out, NPN output) sits in between and keeps the two sides electrically separate.
+
+1. Power the sensor from its own supply and connect its output to one input channel of the module, following the module's labels for NPN or PNP sensors.
+2. Connect that channel's output to the GPIO pin.
+3. Connect the module's output-side ground to a ground pin on the Pi.
+
+Nothing needs to go to the Pi's 3.3 V pin: the pin's own pull-up resistor supplies the HIGH level.
+
+In the pin settings:
+
+| Setting | Value | Why |
+| :-- | :-- | :-- |
+| Pull resistor | Pull-up | An NPN output can only pull the pin LOW. The pull-up makes it read HIGH the rest of the time. |
+| Active when the pin is LOW | Try it both ways | Which level means "triggered" depends on the sensor (normally open or normally closed) and the module. Hold something in front of the sensor and keep the setting that makes the tile show the right state. |
+| Must hold for (ms) | 2000 or more for a bin sensor | Passing dust should not count as "full". |
+
+Then unplug the sensor and look at the tile. With a pull-up, a disconnected input reads HIGH. If HIGH is your "all fine" state, a broken wire or an unpowered sensor looks exactly like "all fine".
+
+Tested with a NOYITO 4-channel optocoupler module (PNP/NPN to NPN, 24 V to 3.3 V) and an M18 capacitive NPN sensor on GPIO22, using Pull-up and "Active when the pin is LOW".
 
 ## Security
 

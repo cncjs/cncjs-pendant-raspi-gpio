@@ -8,8 +8,8 @@ const path = require('node:path');
 const { normalize, Store, ConfigError } = require('../lib/config');
 
 test('empty settings become an empty pin list', () => {
-  assert.deepEqual(normalize(undefined), { version: 1, pins: [] });
-  assert.deepEqual(normalize({}), { version: 1, pins: [] });
+  assert.deepEqual(normalize(undefined), { version: 1, hideBar: false, pins: [] });
+  assert.deepEqual(normalize({}), { version: 1, hideBar: false, pins: [] });
 });
 
 test('an input pin gets defaults and keeps its actions', () => {
@@ -70,6 +70,12 @@ test('bad settings are refused with a readable reason', () => {
   bad('nope', /At most/);
 });
 
+test('the hide-status-row setting defaults to off and is kept when on', () => {
+  assert.equal(normalize({ pins: [] }).hideBar, false);
+  assert.equal(normalize({ hideBar: true, pins: [] }).hideBar, true);
+  assert.equal(normalize({ hideBar: 'yes' }).hideBar, true);
+});
+
 test('duplicate ids are replaced so every pin and action is unique', () => {
   const { pins } = normalize({ pins: [{ id: 'same', gpio: 17 }, { id: 'same', gpio: 18 }] });
   assert.notEqual(pins[0].id, pins[1].id);
@@ -79,7 +85,7 @@ test('the store reads state.gpio and the secret from the cncrc file', () => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gpio-test-')), 'cncrc');
   const store = new Store({ file, baseUrl: 'http://x', getToken: () => 't', log: { warn() {} } });
 
-  assert.deepEqual(store.load(), { version: 1, pins: [] }); // missing file
+  assert.deepEqual(store.load(), { version: 1, hideBar: false, pins: [] }); // missing file
   assert.equal(store.readSecret(), '');
 
   fs.writeFileSync(file, JSON.stringify({ secret: 's3', state: { gpio: { pins: [{ gpio: 17 }] } } }));
@@ -87,7 +93,7 @@ test('the store reads state.gpio and the secret from the cncrc file', () => {
   assert.equal(store.load().pins[0].gpio, 17);
 
   fs.writeFileSync(file, JSON.stringify({ secret: 's3', state: { gpio: { pins: [{ gpio: 99 }] } } }));
-  assert.deepEqual(store.load(), { version: 1, pins: [] }); // invalid settings are ignored
+  assert.deepEqual(store.load(), { version: 1, hideBar: false, pins: [] }); // invalid settings are ignored
 });
 
 test('saving posts to the CNCjs state API with a token', async () => {
@@ -97,11 +103,11 @@ test('saving posts to the CNCjs state API with a token', async () => {
     return { ok: true, status: 200 };
   };
   const store = new Store({ file: '/nonexistent', baseUrl: 'http://127.0.0.1:80', getToken: () => 'tok', fetch });
-  await store.save({ version: 1, pins: [] });
+  await store.save({ version: 1, hideBar: false, pins: [] });
   assert.equal(calls[0].url, 'http://127.0.0.1:80/api/state?key=gpio');
   assert.equal(calls[0].init.method, 'POST');
   assert.equal(calls[0].init.headers.Authorization, 'Bearer tok');
-  assert.deepEqual(JSON.parse(calls[0].init.body), { version: 1, pins: [] });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { version: 1, hideBar: false, pins: [] });
 
   store.fetch = async () => ({ ok: false, status: 403 });
   await assert.rejects(store.save({}), /HTTP 403/);
