@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GPIO</title>
+  <link rel="stylesheet" href="widget.css">
+</head>
+<body>
+  <div id="tiles" class="tiles"></div>
+  <div id="bar" class="bar">
+    <span id="dot" class="dot"></span>
+    <span id="message" class="message"></span>
+    <button id="gear" class="icon-button gear-button" type="button" title="Pin settings" aria-label="Pin settings">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="9" stroke-width="4" stroke-dasharray="3.9 3.169" stroke-dashoffset="1.95"/>
+        <circle cx="12" cy="12" r="5.75" stroke-width="3.5"/>
+      </svg>
+    </button>
+  </div>
+  <div id="settings" class="settings" hidden></div>
+  <script src="pinout.js"></script>
+  <script src="widget.js"></script>
+</body>
+</html>

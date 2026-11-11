@@ -1,313 +1,134 @@
 #!/usr/bin/env node
+'use strict';
 
-var fs = require('fs');
-var path = require('path');
-var program = require('commander');
-var serialport = require('serialport');
-var inquirer = require('inquirer');
-var pkg = require('../package.json');
-var serverMain = require('../index');
+const { parseArgs } = require('node:util');
+const pkg = require('../package.json');
+const jwt = require('../lib/jwt');
+const { Store, defaultCncrc } = require('../lib/config');
+const { LibgpiodBackend, MockBackend } = require('../lib/gpio');
+const { CncjsClient } = require('../lib/cncjs');
+const { App } = require('../lib/app');
+const { createServer } = require('../lib/server');
 
-var util = require('util')
-var exec = require('child_process').exec;
+const HELP = `Usage: cncjs-pendant-raspi-gpio [options]
 
-var sleep = require('sleep');
-var now = require("performance-now")
-var gpio = require('onoff').Gpio,
-  led = new gpio(17, 'out'),
-  button = new gpio(4, 'in', 'both');  // Define GPIO pins on Raspberry Pi
+Raspberry Pi GPIO indicators, buttons and actions for CNCjs.
 
-var options = {};
+Options:
+  -s, --secret <secret>               CNCjs secret key (default: read from the config file,
+                                      or the CNCJS_SECRET environment variable)
+  -c, --config <filename>             CNCjs config file (default: ~/.cncrc)
+      --socket-address <address>      CNCjs address or hostname (default: localhost)
+      --socket-port <port>            CNCjs port (default: 8000)
+      --access-token-lifetime <time>  access token lifetime in seconds or e.g. 30m, 12h, 30d
+                                      (default: 30d)
+      --listen-address <address>      address the widget server listens on (default: 127.0.0.1)
+      --listen-port <port>            port the widget server listens on (default: 8010)
+      --mock                          run without GPIO hardware, for development
+  -V, --version                       output the version number
+  -h, --help                          output usage information
 
-program
-	.version(pkg.version)
-	.usage('-s <secret> -p <port> [options]')
-	.option('-l, --list', 'list available ports then exit')
-  .option('-s, --secret', 'the secret key stored in the ~/.cncrc file')
-	.option('-p, --port <port>', 'path or name of serial port')
-	.option('-b, --baudrate <baudrate>', 'baud rate (default: 115200)', 115200)
-	.option('--socket-address <address>', 'socket address or hostname (default: localhost)', 'localhost')
-	.option('--socket-port <port>', 'socket port (default: 8000)', 8000)
-	.option('--controller-type <type>', 'controller type: Grbl|Smoothie|TinyG (default: Grbl)', 'Grbl')
-  .option('--access-token-lifetime <lifetime>', 'access token lifetime in seconds or a time span string (default: 30d)', '30d')
+Then mount the widget in CNCjs:
+  cncjs --mount /gpio:http://127.0.0.1:8010/
+and add a Custom widget in CNCjs with the URL /gpio/
+`;
 
-program.parse(process.argv);
-
-var options = {
-    secret: program.secret,
-    port: program.port,
-    baudrate: program.baudrate,
-    socketAddress: program.socketAddress,
-    socketPort: program.socketPort,
-    controllerType: program.controllerType,
-    accessTokenLifetime: program.accessTokenLifetime
+const log = {
+  info: (msg) => console.log(msg),
+  warn: (msg) => console.warn(`warning: ${msg}`),
+  error: (msg) => console.error(`error: ${msg}`)
 };
 
-if (options.list) {
-	serialport.list(function(err, ports) {
-		if (err) {
-			console.error(err);
-			process.exit(1);
-		}
-		ports.forEach(function(port) {
-			console.log(port.comName);
-		});
-	});
-	return;
+function options() {
+  const { values } = parseArgs({
+    options: {
+      secret: { type: 'string', short: 's' },
+      config: { type: 'string', short: 'c' },
+      'socket-address': { type: 'string', default: 'localhost' },
+      'socket-port': { type: 'string', default: '8000' },
+      'access-token-lifetime': { type: 'string', default: '30d' },
+      'listen-address': { type: 'string', default: '127.0.0.1' },
+      'listen-port': { type: 'string', default: '8010' },
+      mock: { type: 'boolean', default: false },
+      version: { type: 'boolean', short: 'V', default: false },
+      help: { type: 'boolean', short: 'h', default: false }
+    }
+  });
+  return values;
 }
 
-var store = {
-    controller: {
-        state: {},
-        settings: {}
-    },
-    sender: {
-        status: {}
-    }
-};
-
-
-// Global Varables
-var button_pressed_time = 0
-var button_released_time = 0
-var button_presses = 0
-var button_hold_fuction = null
-var button_presses_fuction = null
-
-// Create Blink Fuction
-function blink(interations, speed) {
-	// Turn ON LED
-	led.writeSync(1);
-
-	// Create Timeout Fuction
-	setTimeout(function() {
-		for(var i = 0; i < interations; i++) {
-			// Blink LED
-			sleep.msleep(speed)
-			led.writeSync(0);
-			sleep.msleep(speed)
-			led.writeSync(1);
-		}
-	}, 0);
-};
-
-
-var createServer = function(options) {
-
-  // Create Button Interupt
-	button.watch(function (err, state) {
-		// Set Error Catch
-		if (err) {
-			throw err;
-		}
-		// Turn LED ON/OFF based on state
-		led.writeSync(Number(!state));
-
-		// Button Pressed
-		if ( state ) { // button pressed
-
-			// Incremmet Button Pressed Count
-			button_presses++
-
-			// check button count
-			if ( now() - button_pressed_time >= 800 ) {  // x milisecionds between presses time
-				// Reset Press Counter
-				button_presses = 1
-				console.log("Button Count Reset")
-			}
-
-			console.log("Button Count: " + button_presses)
-
-
-			// Kill Old Button Hold Fuction
-			clearTimeout(button_hold_fuction);
-			button_hold_fuction = null;
-
-			// Use a timeout with 1000ms (this would be your X variable)
-			button_hold_fuction = setTimeout(function() {
-				// Compare key down time with key up time
-				if (state && +button_released_time < +button_pressed_time) {
-					// Key has been held down for x seconds
-					console.log("button_hold_fuction: Key has been held down for x seconds")
-					blink(10, 50)
-
-					// Poweroff
-					function puts(error, stdout, stderr) { util.puts(stdout) }
-					exec("sudo poweroff", puts);
-				} else {
-				// Key has not been held down for x seconds
-					console.log("button_hold_fuction: exit, safe timout")
-				}
-			}, 3000);
-
-			// Update Time Pressed
-			button_pressed_time = now()
-			//console.log("button_pressed_time")
-		} else { // button released
-			//console.log("button_presses: " + button_presses)
-
-			// Kill Old Button Presses Fuction
-			clearTimeout(button_presses_fuction)
-			button_presses_fuction = null
-
-			// Update Time Released
-			button_released_time = now()
-			console.log("Button Released: button_released_time - button_pressed_time: " + ( button_released_time - button_pressed_time))
-
-			// Bebounce Protection
-			if ( button_released_time - button_pressed_time < 40 ) {
-				button_presses = 0
-				console.log("Bounce Detected!!!")
-
-			} else {
-
-				// Button Presses Switch
-				switch (button_presses) {
-				case 0:
-					console.log("Button Presses: " + button_presses + " | Eletrical Noise");
-					break;
-				case 1:
-					button_presses_fuction = setTimeout(function() {
-						// Blink LEDS
-						blink(button_presses, 200)
-						console.log("Button Presses: " + button_presses)
-
-						// CNC Command
-						socket.emit('write', options.port, "M9;\n");
-					}, 1000);
-					break;
-				case 2:
-					button_presses_fuction = setTimeout(function() {
-						// Blink LEDS
-						blink(button_presses, 200)
-						console.log("Button Presses: " + button_presses)
-
-						// CNC Command
-						socket.emit('write', options.port, "M7;\n");
-					}, 1000);
-					break;
-				case 3:
-					button_presses_fuction = setTimeout(function() {
-						// Blink LEDS
-						blink(button_presses, 200)
-						console.log("Button Presses: " + button_presses)
-
-						// CNC Command
-						socket.emit('write', options.port, "M8;\n");
-					}, 1000);
-					break;
-				case 4:
-				case 5:
-					button_presses_fuction = setTimeout(function() {
-						// Blink LEDS
-						blink(button_presses, 200)
-						console.log("Button Presses: " + button_presses)
-
-						// CNC Command
-						socket.emit('write', options.port, "$X;\n");
-					}, 1000);
-					break;
-				case 6:
-				case 7:
-					button_presses_fuction = setTimeout(function() {
-						// Blink LEDS
-						blink(button_presses, 200)
-						console.log("Button Presses: " + button_presses)
-
-						// CNC Command
-						socket.emit('write', options.port, "$SLP;\n");
-					}, 1000);
-					break;
-				default:
-					button_presses_fuction = setTimeout(function() {
-						// Blink LEDS
-						blink(8, 150)
-						console.log("Button Presses (or more): " + button_presses)
-
-						// CNC Command
-						socket.emit('write', options.port, "$H;\n");
-					}, 1000);
-				}
-			}
-
-			// Kill Button Hold Fuction
-			clearTimeout(button_hold_fuction);
-			button_hold_fuction = null;
-		}
-
-		//console.log(button_pressed_time.toFixed(3)) // the number of milliseconds the current node process is running
-		//console.log("TEST" + (button_released_time - button_pressed_time).toFixed(3)) // ~ 0.002 on my system
-	});
-
-  // Server Connection
-  serverMain(options, function(err, socket) {
-      // Grbl
-      socket.on('Grbl:state', function(state) {
-          store.controller.state = state;
-      });
-      socket.on('Grbl:settings', function(settings) {
-          store.controller.settings = settings;
-      });
-
-      // Smoothie
-      socket.on('Smoothie:state', function(state) {
-          store.controller.state = state;
-      });
-      socket.on('Smoothie:settings', function(settings) {
-          store.controller.settings = settings;
-      });
-
-      // TinyG
-      socket.on('TinyG:state', function(state) {
-          store.controller.state = state;
-      });
-      socket.on('TinyG:settings', function(settings) {
-          store.controller.settings = settings;
-      });
-
-      // Sender
-      socket.on('sender:status', function(data) {
-          store.sender.status = data;
-      });
-
-		// Turn LED ON
-		led.writeSync(1);  // turn led on
-
-    });
-};
-
-if (options.port) {
-    createServer(options);
+async function main() {
+  let opts;
+  try {
+    opts = options();
+    jwt.parseLifetime(opts['access-token-lifetime']);
+  } catch (err) {
+    console.error(`${err.message}\n\n${HELP}`);
+    process.exit(2);
+  }
+  if (opts.help) {
+    console.log(HELP);
     return;
+  }
+  if (opts.version) {
+    console.log(pkg.version);
+    return;
+  }
+
+  let secret = opts.secret || process.env.CNCJS_SECRET || '';
+  const getToken = () => jwt.sign({ id: '', name: 'cncjs-pendant' }, secret, opts['access-token-lifetime']);
+
+  const file = opts.config || defaultCncrc();
+  const store = new Store({
+    file,
+    baseUrl: `http://${opts['socket-address']}:${opts['socket-port']}`,
+    getToken,
+    log
+  });
+  secret = secret || store.readSecret();
+  if (!secret) {
+    log.error(`No CNCjs secret found. Check that ${file} is the config file CNCjs uses ` +
+      '(--config), or pass --secret.');
+    process.exit(1);
+  }
+
+  const backend = opts.mock ? new MockBackend() : new LibgpiodBackend();
+  const cncjs = new CncjsClient({
+    address: opts['socket-address'],
+    port: opts['socket-port'],
+    getToken,
+    log
+  });
+  const app = new App({ secret, store, backend, cncjs, mock: opts.mock, log });
+  const server = createServer(app);
+
+  let stopping = false;
+  const stop = async () => {
+    if (stopping) {
+      return;
+    }
+    stopping = true;
+    await server.shutdown();
+    await app.stop().catch(() => {});
+    process.exit(0);
+  };
+  process.on('SIGINT', stop);
+  process.on('SIGTERM', stop);
+
+  await app.start();
+  cncjs.connect();
+
+  server.on('error', (err) => {
+    log.error(`Widget server: ${err.message}`);
+    process.exit(1);
+  });
+  server.listen(Number(opts['listen-port']), opts['listen-address'], () => {
+    log.info(`cncjs-pendant-raspi-gpio ${pkg.version}${opts.mock ? ' (mock GPIO)' : ''} ` +
+      `listening on http://${opts['listen-address']}:${opts['listen-port']}/`);
+  });
 }
 
-serialport.list(function(err, ports) {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
-    const choices = ports.map(function(port) {
-        return port.comName;
-    });
-
-    inquirer.prompt([{
-        type: 'list',
-        name: 'port',
-        message: 'Specify which port you want to use?',
-        choices: choices
-    }]).then(function(answers) {
-        options.port = answers.port;
-
-        createServer(options);
-    });
-});
-
-// Clean Proccess Kill
-process.on('SIGINT', function () {
-	led.unexport();
-	button.unexport();
-	clearTimeout(button_hold_fuction);
-	button_hold_fuction = null
-	clearTimeout(button_presses_fuction);
-	button_presses_fuction = null
+main().catch((err) => {
+  log.error(err.stack || err.message);
+  process.exit(1);
 });

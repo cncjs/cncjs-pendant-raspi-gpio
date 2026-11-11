@@ -1,0 +1,504 @@
+/* Matches the look of the stock CNCjs widgets (Bootstrap 3 colors and sizes). */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  padding: 8px 10px 4px;
+  font: 13px/1.35 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #333;
+  background: #fff;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---- tiles ---- */
+
+.tiles {
+  position: relative;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
+}
+
+.tile {
+  grid-column: span 12;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0 6px;
+  min-height: 30px;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.span-3 { grid-column: span 3; }
+.span-4 { grid-column: span 4; }
+.span-6 { grid-column: span 6; }
+.span-12 { grid-column: span 12; }
+
+.tile.is-indicator {
+  cursor: default;
+}
+
+.tile.is-button {
+  cursor: pointer;
+  border-color: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+
+.tile.is-button:hover:not(:disabled) {
+  filter: brightness(0.93);
+}
+
+.tile.is-button:active:not(:disabled) {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.tile.is-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tile:focus-visible,
+.button:focus-visible,
+.icon-button:focus-visible,
+.card-title:focus-visible {
+  outline: 2px solid #337ab7;
+  outline-offset: 1px;
+}
+
+.tile-name {
+  opacity: 0.85;
+}
+
+.tile-label {
+  font-weight: bold;
+}
+
+.tile-muted {
+  flex-basis: 100%;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.color-green { background: #5cb85c; color: #fff; }
+.color-red { background: #d9534f; color: #fff; }
+.color-amber { background: #f0ad4e; color: #fff; }
+.color-blue { background: #337ab7; color: #fff; }
+.color-grey { background: #e6e6e6; color: #333; }
+.color-error {
+  background: repeating-linear-gradient(45deg, #f5f5f5, #f5f5f5 6px, #e6e6e6 6px, #e6e6e6 12px);
+  color: #a94442;
+}
+
+.tile.is-alert {
+  animation: alert 1s ease-in-out infinite;
+}
+
+@keyframes alert {
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.is-alert {
+    animation: none;
+    outline: 3px solid #333;
+  }
+}
+
+/* Fills across while the widget is pressed and held to open settings. */
+.tiles.is-holding::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 3px;
+  border-radius: 2px;
+  background: #337ab7;
+  transform-origin: left;
+  animation: hold 1.5s linear forwards;
+}
+
+@keyframes hold {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* ---- status bar ---- */
+
+/* Hidden by the "hide the status row" setting: out of sight, but the cog can
+   still be reached with the Tab key and shows up when it has focus. */
+.bar.is-tucked {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.bar.is-tucked:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  min-height: 24px;
+  margin-top: 2px;
+  overflow: visible;
+  clip-path: none;
+}
+
+body.is-tucked {
+  padding-bottom: 8px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  margin-top: 2px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dot.is-on { background: #5cb85c; }
+.dot.is-off { background: #d9534f; }
+
+.message {
+  flex: 1;
+  font-size: 11px;
+  color: #777;
+}
+
+.icon-button {
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #666;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* The settings gear: drawn, not a font glyph, and sized like the 14px cogs in the CNCjs widget headers. */
+.gear-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: #e6e6e6;
+  color: #333;
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ---- settings ---- */
+
+.settings {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings[hidden] {
+  display: none;
+}
+
+.card {
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px 2px 0;
+  background: #f5f5f5;
+  border-radius: 3px;
+}
+
+.card.is-open .card-head {
+  border-bottom: 1px solid #ccc;
+  border-radius: 3px 3px 0 0;
+}
+
+.card-title {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-weight: bold;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-sub {
+  font-weight: normal;
+  color: #777;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.row > .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.field-label {
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.field .row {
+  align-items: stretch;
+}
+
+.field .row > input {
+  flex: 1;
+  min-width: 0;
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.row > select {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+textarea {
+  font-family: Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #66afe9;
+  outline: 0;
+  box-shadow: 0 0 4px rgba(102, 175, 233, 0.6);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.check input {
+  margin: 0;
+}
+
+.card-body > .check,
+.card-body > .check span,
+.settings > .check,
+.settings > .check span {
+  white-space: normal;
+}
+
+.settings > .check {
+  align-items: flex-start;
+}
+
+.settings > .check input {
+  margin-top: 3px;
+}
+
+.hint {
+  font-size: 11px;
+  color: #777;
+}
+
+.note {
+  grid-column: 1 / -1;
+  padding: 5px 7px;
+  border-radius: 3px;
+  background: #f5f5f5;
+  font-size: 12px;
+}
+
+.note.is-error {
+  background: #f2dede;
+  color: #a94442;
+}
+
+.section {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #ddd;
+  font-weight: bold;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #fafafa;
+}
+
+.action > .row {
+  align-items: center;
+}
+
+.result {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: #777;
+  overflow-wrap: anywhere;
+}
+
+.result.is-ok { color: #3c763d; }
+.result.is-bad { color: #a94442; }
+
+.button {
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: #e6e6e6;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.button.is-primary {
+  border-color: #2e6da4;
+  background: #337ab7;
+  color: #fff;
+}
+
+.button.is-primary:hover:not(:disabled) {
+  background: #286090;
+}
+
+.settings-foot {
+  align-items: center;
+}
+
+/* ---- header diagram ---- */
+
+.pinout {
+  align-self: center;
+  max-width: 100%;
+  height: auto;
+}
+
+.pinout-body {
+  fill: #f5f5f5;
+  stroke: #ccc;
+}
+
+.pinout-num {
+  font-size: 6.5px;
+  fill: #fff;
+  pointer-events: none;
+}
+
+.pinout-name {
+  font-size: 9px;
+  fill: #777;
+}
+
+.pinout-pin circle { stroke: transparent; stroke-width: 2.5; }
+.kind-v5 circle { fill: #d9534f; }
+.kind-v3 circle { fill: #f0ad4e; }
+.kind-gnd circle { fill: #444; }
+.kind-id circle { fill: #999; }
+.kind-io circle { fill: #5cb85c; }
+.kind-io .pinout-name { fill: #333; }
+
+.pinout-pin.is-taken circle { fill: #bbb; }
+.pinout-pin.is-taken .pinout-name { fill: #aaa; text-decoration: line-through; }
+
+.pinout-pin.is-pickable { cursor: pointer; }
+.pinout-pin.is-pickable:hover circle { stroke: #333; }
+
+.pinout-pin.is-selected circle { fill: #337ab7; stroke: #337ab7; }
+.pinout-pin.is-selected .pinout-name { fill: #337ab7; font-weight: bold; }
